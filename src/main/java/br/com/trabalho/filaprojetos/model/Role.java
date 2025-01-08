@@ -47,8 +47,7 @@ public enum Role {
                     Permission.USER_CREATE
             )
     ),
-    LIMITED(Collections.emptySet()), // Conjunto vazio para LIMITED
-    TOCHANGE(Collections.emptySet()); // Conjunto vazio para TOCHANGE
+    LIMITED(Collections.emptySet());
 
     private final Set<Permission> permissions;
 

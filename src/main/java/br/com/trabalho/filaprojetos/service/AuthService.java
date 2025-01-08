@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.util.Objects;
@@ -31,14 +32,23 @@ public class AuthService {
 
     @Autowired
     AuthenticationManager authenticationManager;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public ResponseEntity<LoginResponseDTO> login(LoginRequestDTO loginRequestDTO) {
-        UsernamePasswordAuthenticationToken usernamePassword =  new UsernamePasswordAuthenticationToken(loginRequestDTO.email(), loginRequestDTO.password());
-        Authentication auth = authenticationManager.authenticate(usernamePassword);
+        User user;
 
-        var token = tokenService.generateToken((User) auth.getPrincipal());
+        try{
+            user = (User) userRepository.findByEmailUser(loginRequestDTO.email());
+        }catch (RuntimeException e){
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email não encontrado");
+        }
 
-        return ResponseEntity.ok(new LoginResponseDTO(token));
+        if(passwordEncoder.matches(loginRequestDTO.password(), user.getPassword())){
+            String token = this.tokenService.generateToken(user);
+            return ResponseEntity.ok(new LoginResponseDTO(token));
+        }
+        return ResponseEntity.badRequest().build();
     }
 
     public ResponseEntity<?> register(@Valid RegisterUserDTO registerUserDTO) {
@@ -47,9 +57,9 @@ public class AuthService {
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(registerUserDTO.password());
         User newUser = new User(registerUserDTO.nome(),registerUserDTO.email(), encryptedPassword, Role.USER);
-
+        String token = this.tokenService.generateToken(newUser);
         userRepository.save(newUser);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new LoginResponseDTO(token));
     }
     }
